@@ -1,0 +1,24 @@
+name: CI Pipeline
+
+# Запуск пайплайн, когда пуш в ветку main
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Скачивание кода и сбоока Booking Service
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Booking Service
+        run: docker build ./booking-service -t booking-service:test
+
+      # 2. Сборка Payment Service и Notification Service
+      - name: Build Payment Service
+        run: docker build ./payment-service -t payment-service:test
+
+      - name: Build Notification Service
+        run: docker build ./notification-service -t notification-service:test
