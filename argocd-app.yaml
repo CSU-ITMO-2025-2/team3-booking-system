@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: team3-booking-app
-  namespace: argocd
+  namespace: team3-ns
 spec:
   project: default
   source:

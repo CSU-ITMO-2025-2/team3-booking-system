@@ -6,15 +6,15 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
 # Настройки
-# Если переменных нет, используются значения по умолчанию
-DB_USER = os.getenv("DB_USER", "team3")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Zp8sQeR1@j7Lb6xU") # Пока хардкод для локального теста
-DB_HOST = os.getenv("DB_HOST", "79.174.89.43")
-DB_PORT = os.getenv("DB_PORT", "18809")
-DB_NAME = os.getenv("DB_NAME", "team3_db")
+# Безопасное чтение данных 
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
 
-# URL сервиса оплаты (НЕ ЗАБЫТЬ в Kubernetes помеять его на DNS-имя)
-PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://localhost:8001")
+# URL сервиса оплаты
+PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL")
 
 # Подключение к БД
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

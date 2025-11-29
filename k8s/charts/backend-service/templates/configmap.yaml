@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-config
+data:
+  # Настройки БД
+  DB_HOST: "79.174.89.43"
+  DB_PORT: "18809"
+  DB_USER: "team3"
+  DB_NAME: "team3_db"
+  # Настройки адресов сервисов, чтобы они взаимодействовали между собой
+  PAYMENT_SERVICE_URL: "http://payment-service.team3-ns.svc.cluster.local"
+  NOTIFICATION_SERVICE_URL: "http://notification-service.team3-ns.svc.cluster.local"
