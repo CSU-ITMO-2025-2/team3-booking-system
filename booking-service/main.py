@@ -1,89 +1,84 @@
 import os
-import httpx
-from fastapi import FastAPI, HTTPException, Depends
+import json
+import asyncio
+from fastapi import FastAPI
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.orm import sessionmaker, declarative_base
+from aiokafka import AIOKafkaProducer
 
-# Настройки
-# Безопасное чтение данных 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+# Настройки Kafka
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-cluster-kafka-bootstrap:9092")
 
-# URL сервиса оплаты
-PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL")
+# Настройки БД
+DATABASE_URL = f"postgresql://{os.getenv('DB_USER','user')}:{os.getenv('DB_PASSWORD','password')}@{os.getenv('DB_HOST','localhost')}:5432/{os.getenv('DB_NAME','dbname')}"
 
-# Подключение к БД
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+app = FastAPI()
 
-# база данных (SQLAlchemy)
+# Сама БД
+Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
-# Описание таблицы заявок
 class Booking(Base):
     __tablename__ = "bookings"
     id = Column(Integer, primary_key=True, index=True)
     user_name = Column(String)
-    status = Column(String) # Статусы: PENDING, CONFIRMED, FAILED
+    status = Column(String)
 
-# Создаем таблицу в БД, если её нет
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
-
-# Модель данных для запроса (что нам присылает пользователь)
 class BookingRequest(BaseModel):
     user_name: str
 
-# Функция для получения сессии БД
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Глобальная переменная для producer
+producer = None
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok", "service": "booking-service"}
+@app.on_event("startup")
+async def startup_event():
+    global producer
+    print(f"Connecting to Kafka at {KAFKA_BOOTSTRAP_SERVERS}...")
+    producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
+    try:
+        await producer.start()
+        print("✅ Kafka Producer started!")
+    except Exception as e:
+        print(f"❌ Failed to connect to Kafka: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if producer:
+        await producer.stop()
 
 @app.post("/book")
-async def create_booking(request: BookingRequest, db: Session = Depends(get_db)):
-    # 1. Создание записи "в ожидании"
-    new_booking = Booking(user_name=request.user_name, status="PENDING")
-    db.add(new_booking)
-    db.commit()
-    db.refresh(new_booking)
-
-    # 2. Звонок в сервис оплаты 
-    print(f"Booking {new_booking.id}: contacting payment service...")
-    async with httpx.AsyncClient() as client:
-        try:
-            # Отправка ID брони на оплату
-            response = await client.post(
-                f"{PAYMENT_SERVICE_URL}/pay", 
-                json={"booking_id": new_booking.id}
-            )
-            
-            if response.status_code == 200:
-                new_booking.status = "CONFIRMED"
-            else:
-                new_booking.status = "FAILED"
-                
-        except Exception as e:
-            print(f"Error contacting payment service: {e}")
-            new_booking.status = "FAILED"
+async def create_booking(booking: BookingRequest):
+    session = SessionLocal()
+    # 1. Сохранение в БД
+    new_booking = Booking(user_name=booking.user_name, status="PENDING")
+    session.add(new_booking)
+    session.commit()
+    session.refresh(new_booking)
     
-    # 3. Сохранение итогового статуса
-    db.commit()
-    
-    return {
-        "booking_id": new_booking.id, 
-        "status": new_booking.status,
-        "user": new_booking.user_name
+    # 2. Создание сообщения
+    message = {
+        "booking_id": new_booking.id,
+        "user_name": new_booking.user_name,
+        "status": "created"
     }
+    
+    # 3. Отправка в Kafka ('bookings')
+    if producer:
+        try:
+            await producer.send_and_wait("bookings", json.dumps(message).encode('utf-8'))
+            print(f"Sent to Kafka: {message}")
+        except Exception as e:
+            print(f"Kafka send error: {e}")
+    else:
+        print("Kafka producer not available")
+
+    session.close()
+    return {"status": "created", "id": new_booking.id}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
