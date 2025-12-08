@@ -6,9 +6,12 @@ replicaCount: 1
 
 # Образ контейнера
 image:
-  repository: python
-  tag: 3.9-slim
-  pullPolicy: IfNotPresent
+  # Путь к образу в GitHub Registry
+  repository: ghcr.io/csu-itmo-2025-2/team3-booking-system/booking-service
+  # Тег образа (последняя версия)
+  tag: latest
+  # Проверка наличия новой версии
+  pullPolicy: Always
 
 # Порт, на котором работает приложение внутри контейнера
 service:
