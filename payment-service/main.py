@@ -16,13 +16,10 @@ async def process_payment(booking_data):
     
     print(f"[PAYMENT] Обработка платежа для заказа #{booking_id}...")
     await asyncio.sleep(2) # Имитация задержки банка (2 сек)
-    
-    # лог
-    print(f"[PAYMENT] успешно! Списано ${price} у пользователя {user}.")
+    print(f"[PAYMENT] успешно! Списано ${price} у пользователя {user}.") # лог
 
 async def consume():
     print(f"Payment Service запускается...")
-    
     consumer = AIOKafkaConsumer(
         TOPIC,
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,

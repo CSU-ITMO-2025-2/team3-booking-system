@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копия всего остального кода
 COPY . .
 
+# Запуск скрипта
+CMD ["python", "main.py"]
+
 # Команда запуска (порт 8000)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+#CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
