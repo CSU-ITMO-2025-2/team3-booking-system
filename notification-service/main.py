@@ -3,7 +3,8 @@ import os
 import json
 from aiokafka import AIOKafkaConsumer
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-cluster-kafka-bootstrap:9092")
+KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+#KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "my-cluster-kafka-bootstrap:9092")
 TOPIC = "bookings"
 
 async def consume():
